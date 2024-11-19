@@ -77,21 +77,6 @@ const CircleNodePro = ({ data }: NodeProps) => (
 );
 
 
-// const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, style = {}, markerEnd, data }: EdgeProps) => {
-//   const edgePath = `M${sourceX},${sourceY} C${sourceX + (targetX - sourceX) / 2},${sourceY} ${sourceX + (targetX - sourceX) / 2},${targetY} ${targetX},${targetY}`;
-//   return (
-//     <>
-//       <path id={id} style={style} className="react-flow__edge-path" d={edgePath} markerEnd={markerEnd} />
-//       <text>
-//         <textPath href={`#${id}`} style={{ fontSize: 12, fill: "white" }} startOffset="50%" textAnchor="middle">
-//           {data.label}
-//         </textPath>
-//       </text>
-//     </>
-//   );
-// };
-
-
 const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, style = {}, markerEnd, data }: EdgeProps) => {
   const edgePath = `M${sourceX},${sourceY} L${targetX},${targetY}`;
   return (
@@ -420,7 +405,7 @@ const fetchAddressInfo = async (address: string) => {
     setError(null)
 
     try {
-      const response = await fetch(`/api/transactions?address=${address}`)
+      const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
       const data = await response.json()
 
       if (data.success) {
