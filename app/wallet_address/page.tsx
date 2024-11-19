@@ -400,7 +400,7 @@ const fetchAddressInfo = async (address: string) => {
   }
 };
 
-const fetchTransactionData = async (address: string, updateSearched: boolean = false, parentPosition: { x: number, y: number } = { x: 0, y: 0 }) => {
+const fetchTransactionData = async (address: string, updateSearched = false, parentPosition = { x: 0, y: 0 }) => {
   setIsLoading(true)
   setError(null)
 
@@ -408,29 +408,31 @@ const fetchTransactionData = async (address: string, updateSearched: boolean = f
     const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
     const data = await response.json()
 
-    if (!data.error) { // Changed from data.success
+    if (data.success) {
       if (processedAddresses.has(address.toLowerCase())) {
         return
       }
 
       const newFromNodes: Node[] = []
-      const newToNodes: Node[] = [] 
+      const newToNodes: Node[] = []
       const newEdges: Edge[] = []
       const addedFromNodes = new Set(nodes.map((node) => node.id))
       const addedToNodes = new Set(nodes.map((node) => node.id))
+      const edgeMap = new Map()
 
+      // Add center node for new search
       if (!processedAddresses.size) {
         newFromNodes.push({
           id: address.toLowerCase(),
           type: 'star',
-          position: parentPosition, 
+          position: parentPosition,
           data: { label: `${address.slice(0, 6)}...${address.slice(-4)}` }
         })
         addedFromNodes.add(address.toLowerCase())
         addedToNodes.add(address.toLowerCase())
       }
 
-      // Process transactions from the API response
+      // Process transactions
       data.transactions.forEach((tx: any) => {
         const txFrom = tx.from.toLowerCase()
         const txTo = tx.to.toLowerCase()
@@ -440,7 +442,10 @@ const fetchTransactionData = async (address: string, updateSearched: boolean = f
           newFromNodes.push({
             id: txFrom,
             type: txFrom === address.toLowerCase() ? "star" : "circle",
-            position: txFrom === address.toLowerCase() ? parentPosition : { x: parentPosition.x - 200, y: parentPosition.y + Math.random() * 500 },
+            position: txFrom === address.toLowerCase() ? parentPosition : { 
+              x: parentPosition.x - 200, 
+              y: parentPosition.y + Math.random() * 500 
+            },
             data: { label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}` }
           })
           addedFromNodes.add(txFrom)
@@ -449,21 +454,39 @@ const fetchTransactionData = async (address: string, updateSearched: boolean = f
         if (!addedToNodes.has(txTo) && txFrom !== txTo) {
           newToNodes.push({
             id: txTo,
-            type: txTo === address.toLowerCase() ? "star" : "circle", 
-            position: txTo === address.toLowerCase() ? parentPosition : { x: parentPosition.x + 200, y: parentPosition.y + Math.random() * 500 },
+            type: txTo === address.toLowerCase() ? "star" : "circle",
+            position: txTo === address.toLowerCase() ? parentPosition : { 
+              x: parentPosition.x + 200, 
+              y: parentPosition.y + Math.random() * 500 
+            },
             data: { label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}` }
           })
           addedToNodes.add(txTo)
         }
 
+        if (edgeMap.has(edgeId)) {
+          edgeMap.get(edgeId).totalAmount += tx.amount
+          edgeMap.get(edgeId).transactions.push(tx)
+        } else {
+          edgeMap.set(edgeId, {
+            source: txFrom,
+            target: txTo,
+            totalAmount: tx.amount,
+            transactions: [tx]
+          })
+        }
+      })
+
+      // Create edges from the map
+      edgeMap.forEach((edgeData, edgeId) => {
         newEdges.push({
           id: `e${edgeId}`,
-          source: txFrom,
-          target: txTo,
+          source: edgeData.source,
+          target: edgeData.target,
           type: 'custom',
-          data: {
-            label: `${tx.value} ETH`, // Changed from tx.amount to tx.value
-            transactions: [tx]
+          data: { 
+            label: `${edgeData.totalAmount.toFixed(4)} ETH`,
+            transactions: edgeData.transactions
           },
           markerEnd: { type: MarkerType.ArrowClosed },
           style: { stroke: '#60a5fa', strokeWidth: 3}
@@ -473,9 +496,8 @@ const fetchTransactionData = async (address: string, updateSearched: boolean = f
       setProcessedAddresses(prev => new Set([...prev, address.toLowerCase()]))
       setNodes(prevNodes => [...prevNodes, ...newFromNodes, ...newToNodes])
       setEdges(prevEdges => [...prevEdges, ...newEdges])
-
     } else {
-      setError(data.error || "Failed to fetch transaction data")
+      setError("Failed to fetch transaction data")
     }
   } catch (err) {
     console.error('Error fetching data:', err)
@@ -485,18 +507,26 @@ const fetchTransactionData = async (address: string, updateSearched: boolean = f
   }
 }
 
-  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-    if (!processedAddresses.has(node.id)) {
-      fetchTransactionData(node.id, false, node.position)
-    }
-  }, [processedAddresses])
+useEffect(() => {
+  const newAddress = searchParams?.get('address')
+  if (newAddress) {
+    setAddress(newAddress)
+    fetchTransactionData(newAddress)
+  }
+}, [searchParams])
 
-  const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
-    const edgeTransactions = edge.data?.transactions || [];
-    if (edgeTransactions.length > 0) {
-      setSelectedEdge({ transactions: edgeTransactions });
-    }
-  }, []);
+const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+  if (!processedAddresses.has(node.id)) {
+    fetchTransactionData(node.id, false, node.position)
+  }
+}, [processedAddresses])
+
+const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
+  const edgeTransactions = edge.data?.transactions || []
+  if (edgeTransactions.length > 0) {
+    setSelectedEdge({ transactions: edgeTransactions })
+  }
+}, [])
 
   const onNodesChange: OnNodesChange = useCallback(
     (changes: NodeChange[]) => setNodes((nds) => applyNodeChanges(changes, nds)),
