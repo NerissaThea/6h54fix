@@ -546,10 +546,15 @@ useEffect(() => {
 }, [searchParams])
 
 const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+  console.log('Node double-clicked:', node.id);
+  console.log('Processed addresses:', processedAddresses);
   if (!processedAddresses.has(node.id)) {
+    console.log('Fetching data for node:', node.id);
     fetchTransactionData(node.id, false, node.position)
+  } else {
+    console.log('Node already processed:', node.id);
   }
-}, [processedAddresses])
+}, [processedAddresses, fetchTransactionData])
 
 const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
   const edgeTransactions = edge.data?.transactions || []
