@@ -405,21 +405,7 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
   setError(null)
 
   try {
-    const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`, {
-      method: 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-      },
-      mode: 'cors'
-    })
-
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
-    }
-    
+    const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
     const data = await response.json()
 
     if (data && data.transactions && Array.isArray(data.transactions)) {
@@ -446,56 +432,68 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
         addedToNodes.add(address.toLowerCase())
       }
 
-      // Process transactions with proper error handling
+      // Process transactions with the correct data structure
       data.transactions.forEach((tx: any) => {
-        try {
-          const txFrom = tx.from?.toLowerCase() || ''
-          const txTo = tx.to?.toLowerCase() || ''
-          const value = tx.value ? parseFloat(tx.value) / 1e18 : 0
-          const edgeId = `${txFrom}-${txTo}`
+        // Extract the correct fields from the transaction
+        const txFrom = tx.from?.toLowerCase() || ''
+        const txTo = tx.to?.toLowerCase() || ''
+        const value = tx.value ? parseFloat(tx.value) / 1e18 : 0 // Convert from wei to ETH
+        const edgeId = `${txFrom}-${txTo}`
 
-          if (!txFrom || !txTo) {
-            console.warn('Invalid transaction data:', tx)
-            return
-          }
+        // Skip invalid transactions
+        if (!txFrom || !txTo) return
 
-          if (!addedFromNodes.has(txFrom) && txFrom !== txTo) {
-            newFromNodes.push({
-              id: txFrom,
-              type: txFrom === address.toLowerCase() ? "star" : "circle",
-              position: txFrom === address.toLowerCase() ? parentPosition : { 
-                x: parentPosition.x - 200 + Math.random() * 100, 
-                y: parentPosition.y + Math.random() * 400 - 200
-              },
-              data: { 
-                label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}`,
-                hash: tx.hash,
-                blockNumber: tx.blockNumber
-              }
-            })
-            addedFromNodes.add(txFrom)
-          }
+        if (!addedFromNodes.has(txFrom) && txFrom !== txTo) {
+          newFromNodes.push({
+            id: txFrom,
+            type: txFrom === address.toLowerCase() ? "star" : "circle",
+            position: txFrom === address.toLowerCase() ? parentPosition : { 
+              x: parentPosition.x - 200 + Math.random() * 100, 
+              y: parentPosition.y + Math.random() * 400 - 200
+            },
+            data: { 
+              label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}`,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber
+            }
+          })
+          addedFromNodes.add(txFrom)
+        }
 
-          if (!addedToNodes.has(txTo) && txFrom !== txTo) {
-            newToNodes.push({
-              id: txTo,
-              type: txTo === address.toLowerCase() ? "star" : "circle",
-              position: txTo === address.toLowerCase() ? parentPosition : { 
-                x: parentPosition.x + 200 + Math.random() * 100, 
-                y: parentPosition.y + Math.random() * 400 - 200
-              },
-              data: { 
-                label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}`,
-                hash: tx.hash,
-                blockNumber: tx.blockNumber
-              }
-            })
-            addedToNodes.add(txTo)
-          }
+        if (!addedToNodes.has(txTo) && txFrom !== txTo) {
+          newToNodes.push({
+            id: txTo,
+            type: txTo === address.toLowerCase() ? "star" : "circle",
+            position: txTo === address.toLowerCase() ? parentPosition : { 
+              x: parentPosition.x + 200 + Math.random() * 100, 
+              y: parentPosition.y + Math.random() * 400 - 200
+            },
+            data: { 
+              label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}`,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber
+            }
+          })
+          addedToNodes.add(txTo)
+        }
 
-          if (edgeMap.has(edgeId)) {
-            edgeMap.get(edgeId).totalAmount += value
-            edgeMap.get(edgeId).transactions.push({
+        if (edgeMap.has(edgeId)) {
+          edgeMap.get(edgeId).totalAmount += value
+          edgeMap.get(edgeId).transactions.push({
+            ...tx,
+            amount: value,
+            timestamp: parseInt(tx.timeStamp),
+            hash: tx.hash,
+            from: txFrom,
+            to: txTo,
+            fee: (parseInt(tx.gasUsed) * parseInt(tx.gasPrice) / 1e18).toFixed(8)
+          })
+        } else {
+          edgeMap.set(edgeId, {
+            source: txFrom,
+            target: txTo,
+            totalAmount: value,
+            transactions: [{
               ...tx,
               amount: value,
               timestamp: parseInt(tx.timeStamp),
@@ -503,25 +501,8 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
               from: txFrom,
               to: txTo,
               fee: (parseInt(tx.gasUsed) * parseInt(tx.gasPrice) / 1e18).toFixed(8)
-            })
-          } else {
-            edgeMap.set(edgeId, {
-              source: txFrom,
-              target: txTo,
-              totalAmount: value,
-              transactions: [{
-                ...tx,
-                amount: value,
-                timestamp: parseInt(tx.timeStamp),
-                hash: tx.hash,
-                from: txFrom,
-                to: txTo,
-                fee: (parseInt(tx.gasUsed) * parseInt(tx.gasPrice) / 1e18).toFixed(8)
-              }]
-            })
-          }
-        } catch (txError) {
-          console.error('Error processing transaction:', txError)
+            }]
+          })
         }
       })
 
@@ -540,41 +521,30 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
           style: { stroke: '#60a5fa', strokeWidth: 3}
         })
       })
-
       setProcessedAddresses(prev => new Set([...prev, address.toLowerCase()]))
       setNodes(prevNodes => [...prevNodes, ...newFromNodes, ...newToNodes])
       setEdges(prevEdges => [...prevEdges, ...newEdges])
 
       console.log(`Processed ${data.transactions.length} transactions for address: ${address}`)
     } else {
-      throw new Error("Invalid data structure received from API")
+      setError("Failed to fetch transaction data or invalid data structure")
     }
   } catch (err) {
     console.error('Error fetching data:', err)
-    setError(err instanceof Error ? err.message : 'Failed to fetch transaction data')
   } finally {
     setIsLoading(false)
   }
 }
 
-useEffect(() => {
-  const newAddress = searchParams?.get('address')
-  if (newAddress) {
-    setAddress(newAddress)
-    fetchTransactionData(newAddress)
-  }
-}, [searchParams])
 
 const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-  console.log('Node double-clicked:', node.id);
-  console.log('Processed addresses:', processedAddresses);
+  // Check if the node's ID is already processed
   if (!processedAddresses.has(node.id)) {
-    console.log('Fetching data for node:', node.id);
-    fetchTransactionData(node.id, false, node.position)
-  } else {
-    console.log('Node already processed:', node.id);
+    // Fetch transaction data for the node's ID
+    fetchTransactionData(node.id, false, node.position);
   }
-}, [processedAddresses, fetchTransactionData])
+}, [processedAddresses]);
+
 
 const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
   const edgeTransactions = edge.data?.transactions || []
