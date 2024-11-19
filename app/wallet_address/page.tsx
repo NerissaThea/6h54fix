@@ -408,7 +408,7 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
     const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
     const data = await response.json()
 
-    if (data.success) {
+    if (data.success && Array.isArray(data.transactions)) {
       if (processedAddresses.has(address.toLowerCase())) {
         return
       }
@@ -432,8 +432,12 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
         addedToNodes.add(address.toLowerCase())
       }
 
+      // Limit the number of transactions to process
+      const MAX_TRANSACTIONS = 100
+      const limitedTransactions = data.transactions.slice(0, MAX_TRANSACTIONS)
+
       // Process transactions
-      data.transactions.forEach((tx: any) => {
+      limitedTransactions.forEach((tx: any) => {
         const txFrom = tx.from.toLowerCase()
         const txTo = tx.to.toLowerCase()
         const edgeId = `${txFrom}-${txTo}`
@@ -443,8 +447,8 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
             id: txFrom,
             type: txFrom === address.toLowerCase() ? "star" : "circle",
             position: txFrom === address.toLowerCase() ? parentPosition : { 
-              x: parentPosition.x - 200, 
-              y: parentPosition.y + Math.random() * 500 
+              x: parentPosition.x - 200 + Math.random() * 100, 
+              y: parentPosition.y + Math.random() * 400 - 200
             },
             data: { label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}` }
           })
@@ -456,8 +460,8 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
             id: txTo,
             type: txTo === address.toLowerCase() ? "star" : "circle",
             position: txTo === address.toLowerCase() ? parentPosition : { 
-              x: parentPosition.x + 200, 
-              y: parentPosition.y + Math.random() * 500 
+              x: parentPosition.x + 200 + Math.random() * 100, 
+              y: parentPosition.y + Math.random() * 400 - 200
             },
             data: { label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}` }
           })
@@ -465,13 +469,13 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
         }
 
         if (edgeMap.has(edgeId)) {
-          edgeMap.get(edgeId).totalAmount += tx.amount
+          edgeMap.get(edgeId).totalAmount += parseFloat(tx.amount) || 0
           edgeMap.get(edgeId).transactions.push(tx)
         } else {
           edgeMap.set(edgeId, {
             source: txFrom,
             target: txTo,
-            totalAmount: tx.amount,
+            totalAmount: parseFloat(tx.amount) || 0,
             transactions: [tx]
           })
         }
@@ -496,8 +500,10 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
       setProcessedAddresses(prev => new Set([...prev, address.toLowerCase()]))
       setNodes(prevNodes => [...prevNodes, ...newFromNodes, ...newToNodes])
       setEdges(prevEdges => [...prevEdges, ...newEdges])
+
+      console.log(`Processed ${limitedTransactions.length} transactions for address: ${address}`)
     } else {
-      setError("Failed to fetch transaction data")
+      setError("Failed to fetch transaction data or invalid data structure")
     }
   } catch (err) {
     console.error('Error fetching data:', err)
