@@ -408,7 +408,7 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
     const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
     const data = await response.json()
 
-    if (data.success && Array.isArray(data.transactions)) {
+    if (data && data.transactions && Array.isArray(data.transactions)) {
       if (processedAddresses.has(address.toLowerCase())) {
         return
       }
@@ -432,15 +432,16 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
         addedToNodes.add(address.toLowerCase())
       }
 
-      // Limit the number of transactions to process
-      const MAX_TRANSACTIONS = 100
-      const limitedTransactions = data.transactions.slice(0, MAX_TRANSACTIONS)
-
-      // Process transactions
-      limitedTransactions.forEach((tx: any) => {
-        const txFrom = tx.from.toLowerCase()
-        const txTo = tx.to.toLowerCase()
+      // Process transactions with the correct data structure
+      data.transactions.forEach((tx: any) => {
+        // Extract the correct fields from the transaction
+        const txFrom = tx.from?.toLowerCase() || ''
+        const txTo = tx.to?.toLowerCase() || ''
+        const value = tx.value ? parseFloat(tx.value) / 1e18 : 0 // Convert from wei to ETH
         const edgeId = `${txFrom}-${txTo}`
+
+        // Skip invalid transactions
+        if (!txFrom || !txTo) return
 
         if (!addedFromNodes.has(txFrom) && txFrom !== txTo) {
           newFromNodes.push({
@@ -450,7 +451,11 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
               x: parentPosition.x - 200 + Math.random() * 100, 
               y: parentPosition.y + Math.random() * 400 - 200
             },
-            data: { label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}` }
+            data: { 
+              label: `${txFrom.slice(0, 6)}...${txFrom.slice(-4)}`,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber
+            }
           })
           addedFromNodes.add(txFrom)
         }
@@ -463,20 +468,40 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
               x: parentPosition.x + 200 + Math.random() * 100, 
               y: parentPosition.y + Math.random() * 400 - 200
             },
-            data: { label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}` }
+            data: { 
+              label: `${txTo.slice(0, 6)}...${txTo.slice(-4)}`,
+              hash: tx.hash,
+              blockNumber: tx.blockNumber
+            }
           })
           addedToNodes.add(txTo)
         }
 
         if (edgeMap.has(edgeId)) {
-          edgeMap.get(edgeId).totalAmount += parseFloat(tx.amount) || 0
-          edgeMap.get(edgeId).transactions.push(tx)
+          edgeMap.get(edgeId).totalAmount += value
+          edgeMap.get(edgeId).transactions.push({
+            ...tx,
+            amount: value,
+            timestamp: parseInt(tx.timeStamp),
+            hash: tx.hash,
+            from: txFrom,
+            to: txTo,
+            fee: (parseInt(tx.gasUsed) * parseInt(tx.gasPrice) / 1e18).toFixed(8)
+          })
         } else {
           edgeMap.set(edgeId, {
             source: txFrom,
             target: txTo,
-            totalAmount: parseFloat(tx.amount) || 0,
-            transactions: [tx]
+            totalAmount: value,
+            transactions: [{
+              ...tx,
+              amount: value,
+              timestamp: parseInt(tx.timeStamp),
+              hash: tx.hash,
+              from: txFrom,
+              to: txTo,
+              fee: (parseInt(tx.gasUsed) * parseInt(tx.gasPrice) / 1e18).toFixed(8)
+            }]
           })
         }
       })
@@ -501,7 +526,7 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
       setNodes(prevNodes => [...prevNodes, ...newFromNodes, ...newToNodes])
       setEdges(prevEdges => [...prevEdges, ...newEdges])
 
-      console.log(`Processed ${limitedTransactions.length} transactions for address: ${address}`)
+      console.log(`Processed ${data.transactions.length} transactions for address: ${address}`)
     } else {
       setError("Failed to fetch transaction data or invalid data structure")
     }
