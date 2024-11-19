@@ -538,12 +538,10 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
 
 
 const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
-  // Check if the node's ID is already processed
-  if (!processedAddresses.has(node.id)) {
-    // Fetch transaction data for the node's ID
-    fetchTransactionData(node.id, false, node.position);
-  }
-}, [processedAddresses]);
+    if (!processedAddresses.has(node.id)) {
+      fetchTransactionData(node.id, false, node.position)
+    }
+  }, [processedAddresses])
 
 
 const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
