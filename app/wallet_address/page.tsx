@@ -407,7 +407,7 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
   try {
     const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`)
     const data = await response.json()
-
+    console.log(data);
     if (data && data.transactions && Array.isArray(data.transactions)) {
       if (processedAddresses.has(address.toLowerCase())) {
         return
@@ -521,7 +521,6 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
           style: { stroke: '#60a5fa', strokeWidth: 3}
         })
       })
-
       setProcessedAddresses(prev => new Set([...prev, address.toLowerCase()]))
       setNodes(prevNodes => [...prevNodes, ...newFromNodes, ...newToNodes])
       setEdges(prevEdges => [...prevEdges, ...newEdges])
