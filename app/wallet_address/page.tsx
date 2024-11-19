@@ -532,7 +532,6 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
     }
   } catch (err) {
     console.error('Error fetching data:', err)
-    setError('Failed to fetch transaction data')
   } finally {
     setIsLoading(false)
   }
