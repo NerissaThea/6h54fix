@@ -10,7 +10,7 @@ const Navbar: React.FC = () => {
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [walletAddress, setwalletAddress] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [setIsLoading] = useState(false);
 
 
   const handleSearch = async (e: React.FormEvent) => {
