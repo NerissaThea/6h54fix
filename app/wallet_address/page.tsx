@@ -10,7 +10,6 @@ import {
   Edge,
   NodeProps,
   EdgeProps,
-  Skip,
   NodeChange,
   EdgeChange,
   OnNodesChange,
