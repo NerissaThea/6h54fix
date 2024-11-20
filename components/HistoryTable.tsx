@@ -31,32 +31,31 @@ const [isMobile, setIsMobile] = useState(false);
 const [isLoading, setIsLoading] = useState(false);
 
 const fetchTransactions = useCallback(async () => {
-    try {
-        setIsLoading(true);
-        const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`);
-        const data = await response.json();
-        if (data.success) {
-            setTransactions(data.transactions);
-            setTotalPages(Math.ceil(data.transactions.length / 50));
-        } else {
-            toast({
-                title: "Error fetching transactions",
-                description: data.message,
-                variant: "destructive",
-            });
-        }
-    } catch (error) {
-        console.error('Error fetching transactions:', error);
-        toast({
-            title: "Error fetching transactions",
-            description: "Failed to fetch transactions.",
-            variant: "destructive",
-        });
-    } finally {
-        setIsLoading(false);
-    }
+try {
+setIsLoading(true);
+const response = await fetch(`/api/transactions?address=${address}`);
+const data = await response.json();
+if (data.success) {
+setTransactions(data.transactions);
+setTotalPages(Math.ceil(data.transactions.length / 50));
+} else {
+toast({
+title: "Error fetching transactions",
+description: data.message,
+variant: "destructive",
+});
+}
+} catch (error) {
+console.error('Error fetching transactions:', error);
+toast({
+title: "Error fetching transactions",
+description: "Failed to fetch transactions.",
+variant: "destructive",
+});
+} finally {
+setIsLoading(false);
+}
 }, [address]);
-
 
 useEffect(() => {
 fetchTransactions();
