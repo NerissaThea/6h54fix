@@ -6,6 +6,7 @@ import dynamic from "next/dynamic";
 import { ChevronDown, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import {
   Controls,
+  Skip,
   Node,
   Edge,
   NodeProps,
