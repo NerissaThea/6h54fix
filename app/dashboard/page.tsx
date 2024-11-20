@@ -1,97 +1,145 @@
-"use client"
+"use client";
+import React, { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
+import { Search, Menu, X } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
-import { useState, useEffect } from 'react'
-import GasFeeHeatmap from '@/components/GasFeeHeatmap'
-import EnhancedAddressRecognition from '@/components/enhanced-address-recognition'
-import WalletFlow from '@/components/walletflow'
-import ETH_price from '@/components/ETH_price'
-import ETH_volume from '@/components/ETH_volume'
-import Num_trans from '@/components/number_transactions'
-import Num_ETH from '@/components/number_ETH_price'
-import Action_add from '@/components/action_add'
-import Transaction from '@/components/transaction'
-import Top_transaction from '@/components/top_transaction'
-import CurrentBalance from '@/components/CurrentBalance'
-import TotalInflow from '@/components/TotalInflow'
-import TotalOutflow from '@/components/TotalOutflow'
-import { ArrowUp } from 'lucide-react'
 
-export default function Home() {
-  const [showBackToTop, setShowBackToTop] = useState(false)
+const Navbar: React.FC = () => {
+  const router = useRouter();
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [walletAddress, setwalletAddress] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300)
+
+  const handleSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (walletAddress) {
+      setIsLoading(true);
+      try {
+        // Gọi API để lấy và lưu transactions vào Neo4j
+        const response = await fetch(`/api/transactions?address=${encodeURIComponent(walletAddress)}`);
+        const data = await response.json();
+
+        if (data.success) {
+          // Nếu thành công, chuyển hướng đến trang wallet_address
+          router.push(`/wallet_address?address=${encodeURIComponent(walletAddress)}`);
+          setwalletAddress('');
+        } else {
+          console.error('Error fetching transactions:', data.message);
+          // alert('Error fetching wallet data. Please try again.');
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        alert('Error fetching wallet data. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
+    router.push(`/wallet_address?address=${walletAddress}`)
 
-    window.addEventListener('scroll', handleScroll)
-    return () => window.removeEventListener('scroll', handleScroll)
-  }, [])
-
-  const scrollToTop = () => {
-    window.scrollTo({ top: 0, behavior: 'smooth' })
-  }
+  };
 
   return (
-    <main className="bg-[#1C2128] min-h-screen p-2 sm:p-4 md:p-6 lg:p-8 xl:p-10 space-y-4 sm:space-y-6 md:space-y-8 lg:space-y-10">
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-2 sm:gap-4">
-        <Num_ETH />
-        <Num_trans />
-        <CurrentBalance />
-        <TotalInflow />
-        <TotalOutflow />
-      </div>
+    <nav className="bg-[#161A20] text-[#FFFFFF] shadow-md">
+      <div className="container mx-auto px-4">
+        <div className="flex items-center justify-between h-20">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/fullogo.svg"
+                alt="JBIZ Logo"
+                width={60}
+                height={80}
+                className="mr-2"
+              />
+            </Link>
+          </div>
 
-      <div className="w-full">
-        <EnhancedAddressRecognition />
-      </div>
+          {/* Navigation Links (Desktop) */}
+          <div className="hidden md:flex flex-1 justify-evenly items-center font-quantico text-[#FFFFFF]">
+            <Link href="/" className="hover:text-[#F5B056]">Home</Link>
+            <Link href="/transaction" className="hover:text-[#F5B056]">Transaction</Link>
+            <Link href="/dashboard" className="hover:text-[#F5B056]">Dashboard</Link>
+            <Link href="/aboutus" className="hover:text-[#F5B056]">About us</Link>
+          </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-        <div className="w-full">
-          <ETH_price />
+          {/* Search Bar (Desktop) */}
+          <div className="hidden md:flex flex-1 max-w-xl ml-8">
+            <div className="relative font-quantico w-full">
+              <input
+                type="text"
+                placeholder="Search by address / Txn Hash / Block / Token / Domain"
+                className="w-full py-2 pl-10 pr-4 text-gray-700 bg-gray-100 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F5B056]"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onKeyDown={handleSearch}
+                aria-label="Search transactions"
+              />
+              <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                <Search className="h-5 w-5 text-gray-500" />
+              </div>
+              <button
+                onClick={handleSearch}
+                className="absolute inset-y-0 right-0 flex items-center pr-3"
+                aria-label="Perform search"
+              >
+                <Search className="h-5 w-5 text-gray-500" />
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile Menu Button */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="text-[#F5B056] hover:text-[#FFFFFF] focus:outline-none"
+            >
+              {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
-        <div className="w-full">
-          <ETH_volume />
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
-        <div className="w-full">
-          <Transaction />
-        </div>
-        <div className="w-full">
-          <Top_transaction />
-        </div>
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden">
+            <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 font-quantico">
+              <Link href="/" className="block px-3 py-2 rounded-md text-[#F5B056] hover:text-[#FFFFFF] hover:bg-gray-700">Home</Link>
+              <Link href="/transaction" className="block px-3 py-2 rounded-md text-[#F5B056] hover:text-[#FFFFFF] hover:bg-gray-700">Transaction</Link>
+              <Link href="/dashboard" className="block px-3 py-2 rounded-md text-[#F5B056] hover:text-[#FFFFFF] hover:bg-gray-700">Dashboard</Link>
+              <Link href="/aboutus" className="block px-3 py-2 rounded-md text-[#F5B056] hover:text-[#FFFFFF] hover:bg-gray-700">About us</Link>
+            </div>
+            <div className="px-2 pt-2 pb-3">
+              <div className="relative font-quantico">
+                <input
+                  type="text"
+                  placeholder="Search by Transaction Hash"
+                  className="w-full py-2 pl-10 pr-4 text-gray-700 bg-gray-100 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#F5B056]"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleSearch}
+                  aria-label="Search transactions"
+                />
+                <div className="absolute inset-y-0 left-0 flex items-center pl-3">
+                  <Search className="h-5 w-5 text-gray-500" />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3"
+                  aria-label="Perform search"
+                >
+                  <Search className="h-5 w-5 text-gray-500" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
-
-      <div className="w-full">
-        <Action_add />
-      </div>
-
-      <div className="w-full">
-        <WalletFlow />
-      </div>
-
-      <div className="space-y-4 sm:space-y-6">
-        <div className="w-full">
-          <GasFeeHeatmap />
-        </div>
-        {/* Uncomment if you want to include GasPrediction
-        <div className="w-full">
-          <GasPrediction />
-        </div>
-        */}
-      </div>
-
-      {showBackToTop && (
-        <button
-          onClick={scrollToTop}
-          className="fixed bottom-2 right-2 sm:bottom-4 sm:right-4 bg-primary text-primary-foreground p-2 rounded-full shadow-lg transition-opacity hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-opacity-50"
-          aria-label="Back to top"
-        >
-          <ArrowUp className="w-4 h-4" />
-        </button>
-      )}
-    </main>
-  )
+    </nav>
+  );
 }
+
+export default Navbar;
