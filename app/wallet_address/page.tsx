@@ -895,7 +895,7 @@ const onEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
         </div>
         <div className="flex-grow">
           {activeView === "transaction" ? (
-            <HistoryTable address={address} />
+            <HistoryTable address={address || ""} />
           ) : (
             <div className="flex-grow flex">
             {activeView === "graph" && (
