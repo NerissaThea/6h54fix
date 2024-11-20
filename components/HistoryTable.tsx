@@ -33,7 +33,7 @@ const [isLoading, setIsLoading] = useState(false);
 const fetchTransactions = useCallback(async () => {
 try {
 setIsLoading(true);
-const response = await fetch(`https://nhiapi.vercel.app/api/transactions?address=${address}`);
+const response = await fetch(`/api/transactions?address=${address}`);
 const data = await response.json();
 if (data.success) {
 setTransactions(data.transactions);
