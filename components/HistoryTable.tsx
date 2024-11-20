@@ -88,12 +88,8 @@ return `${days} days ago`;
 };
 
 const truncateAddress = (address: string) => {
-  if (!address || address.length < 10) {
-    return "Invalid Address"; // Hoặc giá trị mặc định
-  }
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
-
 
 const copyToClipboard = async (text: string) => {
 try {
