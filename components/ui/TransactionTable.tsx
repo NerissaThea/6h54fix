@@ -1,4 +1,3 @@
-/* eslint-disable */
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
@@ -9,9 +8,22 @@ import { Eye, ChevronLeft, ChevronRight, Download, Copy } from 'lucide-react'
 import { toast } from "@/components/ui/use-toast"
 import { ethers } from 'ethers';
 
+interface Transaction {
+hash: string;
+method: string;
+block: string;
+age: string;
+from: string;
+to: string;
+amount: string;
+fee: string;
+timestamp: number;
+}
+
+
 export default function TransactionExplorer() {
 // State variables
-const [transactions, setTransactions] = useState<any[]>([]);
+const [transactions, setTransactions] = useState<Transaction[]>([]);
 const [currentPage, setCurrentPage] = useState(1);
 const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
 const [totalPages] = useState(5000);
@@ -86,18 +98,11 @@ return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
 // Fetch latest blocks and their transactions
-const fetchLatestTransactions = async () => {
+const fetchLatestTransactions = useCallback(async () => {
 try {
 setIsLoading(true);
 
-// First, get the latest block number
-const latestBlockResponse = await fetch(
-`https://api.etherscan.io/api?module=proxy&action=eth_blockNumber&apikey=${ETHERSCAN_API_KEY}`
-);
-const latestBlockData = await latestBlockResponse.json();
-const latestBlock = parseInt(latestBlockData.result, 16);
-
-// Then get transactions from the latest blocks
+// Get transactions from the latest blocks
 const response = await fetch(
 `https://api.etherscan.io/api?module=proxy&action=eth_getBlockByNumber&tag=latest&boolean=true&apikey=${ETHERSCAN_API_KEY}`
 );
@@ -118,7 +123,7 @@ amount: ethers.utils.formatEther(tx.value) + ' ETH',
 fee: ethers.utils.formatEther(
 ethers.BigNumber.from(tx.gas).mul(ethers.BigNumber.from(tx.gasPrice))
 ),
-timestamp: timestamp
+timestamp: timestamp,
 };
 })
 );
@@ -127,26 +132,30 @@ setTransactions(formattedTransactions);
 } catch (error) {
 console.error('Error fetching transactions:', error);
 toast({
-title: "Error fetching transactions",
-description: "Failed to fetch latest transactions.",
-variant: "destructive",
+title: 'Error fetching transactions',
+description: 'Failed to fetch latest transactions.',
+variant: 'destructive',
 });
 } finally {
 setIsLoading(false);
 }
-};
+}, []); // Ensure fetchLatestTransactions remains stable
 
-
-
-// Effect to fetch data
+// Effect to handle interval-based updates
 useEffect(() => {
 fetchLatestTransactions();
+
 const interval = setInterval(() => {
 fetchLatestTransactions();
 }, 150000); // Refresh every 2.5 minutes
 
-return () => clearInterval(interval);
-}, [currentPage]); //Refresh every page changes
+return () => clearInterval(interval); // Cleanup interval on component unmount
+}, [fetchLatestTransactions]); // Dependency is now fetchLatestTransactions only
+
+// Effect to handle updates when currentPage changes
+useEffect(() => {
+fetchLatestTransactions(); // Fetch transactions whenever the page changes
+}, [currentPage]); // Trigger only when currentPage changes
 
 // Effect to handle responsive design
 useEffect(() => {
@@ -351,11 +360,11 @@ transactions.map((tx, index) => (
 </TableCell>
 <TableCell className="font-medium text-blue-600">
 <div className="flex items-center space-x-2">
-<Link href={`/transaction/${tx.hash}`}>
-<span className="cursor-pointer hover:underline">
+
+<span className="cursor-default">
 {truncateAddress(tx.hash)}
 </span>
-</Link>
+
 
 <div key={tx.hash} className="tooltip">
 <Button
@@ -389,11 +398,11 @@ selectedMethod === tx.method
 <TableCell>{tx.age}</TableCell>
 <TableCell className="text-blue-600">
 <div className="flex items-center space-x-2">
-<Link href={`/address/${tx.from}`}>
-<span className="cursor-pointer hover:underline">
+
+<span className="cursor-default">
 {truncateAddress(tx.from)}
 </span>
-</Link>
+
 <div key={tx.from} className="tooltip">
 <Button
 variant="ghost"
@@ -411,11 +420,11 @@ className="h-5 w-5 p-0"
 </TableCell>
 <TableCell className="text-blue-600">
 <div className="flex items-center space-x-2">
-<Link href={`/address/${tx.to}`}>
-<span className="cursor-pointer hover:underline">
+
+<span className="cursor-default">
 {truncateAddress(tx.to)}
 </span>
-</Link>
+
 <div key={tx.to} className="tooltip">
 <Button
 variant="ghost"
