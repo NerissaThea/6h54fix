@@ -57,6 +57,7 @@ const fetchTransactions = useCallback(async () => {
   }
 }, [address]);
 
+
 useEffect(() => {
 fetchTransactions();
 }, [fetchTransactions]);
