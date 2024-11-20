@@ -434,6 +434,10 @@ const fetchTransactionData = async (address: string, updateSearched = false, par
 
       // Process transactions with the correct data structure
       data.transactions.forEach((tx: any) => {
+        if (!tx.from || !tx.to || !tx.value || !tx.hash) {
+          console.error("Invalid transaction data:", tx);
+          return; // Bỏ qua giao dịch nếu dữ liệu không hợp lệ
+        }
         // Extract the correct fields from the transaction
         const txFrom = tx.from?.toLowerCase() || ''
         const txTo = tx.to?.toLowerCase() || ''
